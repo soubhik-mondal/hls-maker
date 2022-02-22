@@ -1,0 +1,24 @@
+{
+  "name": "hls-maker",
+  "version": "1.0.0",
+  "description": "Downloads video from S3, processes it for HLS, uploads the output files back to S3.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Soubhik Mondal <souvikmondal.j@gmail.com>",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soubhik-mondal/hls-maker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/soubhik-mondal/hls-maker/issues"
+  },
+  "homepage": "https://github.com/soubhik-mondal/hls-maker#readme",
+  "dependencies": {
+    "aws-sdk": "^2.1078.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3"
+  }
+}
