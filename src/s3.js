@@ -4,19 +4,12 @@ const AWS = require('aws-sdk');
 const fs = require('fs').promises;
 
 module.exports = function (
-	accessKeyId,
-	secretAccessKey,
-	region,
 	inBucket,
 	outBucket,
 	folderInPath,
 	s3OutPath
 ) {
-	const S3 = new AWS.S3({
-		accessKeyId,
-		secretAccessKey,
-		region,
-	});
+	const S3 = new AWS.S3();
 
 	// S3 URL should point to a single object, not a folder
 	const download = inputS3URL =>
@@ -29,8 +22,6 @@ module.exports = function (
 				fs.writeFile(`${folderInPath}/${inputS3URL.split('/').reverse()[0]}`, Body)
 			)
 			.then(() => `${folderInPath}/${inputS3URL.split('/').reverse()[0]}`);
-
-	// const deleteLocalFiles = folderPath => fs.rmdir(folderPath, { recursive: true });
 
 	// folderPath should point to a folder containing only
 	// files, not a file or folder containing folders or links
@@ -52,7 +43,6 @@ module.exports = function (
 					)
 				)
 			)
-			// .then(results => deleteLocalFiles(folderPath))
 			.then(() => `${s3OutPath}/${folderPath.split('/').reverse()[0]}/master.m3u8`);
 
 	return {

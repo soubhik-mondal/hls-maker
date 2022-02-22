@@ -16,9 +16,9 @@
     "url": "https://github.com/soubhik-mondal/hls-maker/issues"
   },
   "homepage": "https://github.com/soubhik-mondal/hls-maker#readme",
-  "dependencies": {
-    "aws-sdk": "^2.1078.0",
-    "dotenv": "^16.0.0",
-    "express": "^4.17.3"
+  "dependencies": {},
+  "devDependencies": {
+    "aws-sdk": "^2.1001.0",
+    "dotenv": "^16.0.0"
   }
 }

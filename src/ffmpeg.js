@@ -1,7 +1,6 @@
 'use strict';
 
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const exec = require('util').promisify(require('child_process').exec);
 
 const ffmpegParams = require('./ffmpeg-params')();
 
@@ -62,7 +61,6 @@ module.exports = function (outputPath) {
 		if (`${w}x${h}` in ffmpegParams.knownAspectRatios) {
 			// console.log('prepareParameters 1');
 			let mainParameter = ffmpegParams.knownAspectRatios[`${w}x${h}`];
-			// list.push(mainParameter);
 			mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
 			metadata.list = list;
 			return metadata;
@@ -73,7 +71,6 @@ module.exports = function (outputPath) {
 			let h = mainParameter.h;
 			mainParameter.w = h;
 			mainParameter.h = w;
-			// list.push(mainParameter);
 			mainParameter.lower_res.forEach(each => {
 				let w = each.w;
 				let h = each.h;
@@ -102,7 +99,6 @@ module.exports = function (outputPath) {
 			}
 			if (selectedRes) {
 				let mainParameter = ffmpegParams.knownAspectRatios[selectedRes];
-				// list.push(mainParameter);
 				mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
 				metadata.list = list;
 				return metadata;
@@ -128,7 +124,6 @@ module.exports = function (outputPath) {
 			}
 			if (selectedRes) {
 				let mainParameter = ffmpegParams.knownAspectRatios[selectedRes];
-				// list.push(mainParameter);
 				mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
 				metadata.list = list;
 				return metadata;
@@ -136,14 +131,14 @@ module.exports = function (outputPath) {
 				return Promise.reject(`Unable to handle this video - ${JSON.stringify(metadata)}`);
 			}
 		} else {
-			console.log('prepareParameters 5');
+			// console.log('prepareParameters 5');
 			return Promise.reject(`Unable to handle this video - ${JSON.stringify(metadata)}`);
 		}
 	};
 
 	const buildCommand = (path, rotate, list) => {
 		// set up the command
-		let command = `ffmpeg -i ../../${path} -y`;
+		let command = `ffmpeg -i ${path} -y`;
 
 		// complex filter
 		command += ' -filter_complex "[0:v]';
@@ -178,7 +173,7 @@ module.exports = function (outputPath) {
 		command += list
 			.map(
 				(e, i) =>
-					` -map a:0` + ` -c:a:0 aac` + ` -ar ${e.a_ar}` + ` -b:a:0 ${e.a_b}` + ` -ac ${e.ac}`
+					` -map a:0 -c:a:${i} aac -ar ${e.a_ar} -b:a:${i} ${e.a_b} -ac ${e.ac}`
 			)
 			.join('');
 
@@ -214,19 +209,19 @@ module.exports = function (outputPath) {
 				}
 			})
 			.then(output => {
-				console.log(output);
+				if (output) {
+					console.error(output);
+				}
 				return `${outputPath}/${filename}`;
 			});
 	};
 
 	const processVideo = path => {
-		return (
-			ffprobe(path)
-				.then(output => extractSimplify(output))
-				.then(metadata => prepareParameters(metadata))
-				.then(({ rotate, list }) => buildCommand(path, rotate, list))
-				.then(command => ffmpeg(command, path))
-		);
+		return ffprobe(path)
+			.then(output => extractSimplify(output))
+			.then(metadata => prepareParameters(metadata))
+			.then(({ rotate, list }) => buildCommand(path, rotate, list))
+			.then(command => ffmpeg(command, path));
 	};
 
 	return {
