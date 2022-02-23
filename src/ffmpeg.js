@@ -19,7 +19,7 @@ function ratio(w, h) {
 module.exports = function (outputPath) {
 	const ffprobe = path =>
 		exec(
-			`ffprobe -hide_banner -v panic -print_format json -show_streams -select_streams v:0 ${path}`
+			`/opt/bin/ffprobe -hide_banner -v panic -print_format json -show_streams -select_streams v:0 ${path}`
 		).then(output => (output.stderr ? Promise.reject(output.stderr) : JSON.parse(output.stdout)));
 
 	const extractSimplify = metadata => {
@@ -138,7 +138,7 @@ module.exports = function (outputPath) {
 
 	const buildCommand = (path, rotate, list) => {
 		// set up the command
-		let command = `ffmpeg -i ${path} -y`;
+		let command = `/opt/bin/ffmpeg -i ${path} -y`;
 
 		// complex filter
 		command += ' -filter_complex "[0:v]';
