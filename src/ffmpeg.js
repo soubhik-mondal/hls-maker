@@ -4,6 +4,11 @@ const exec = require('util').promisify(require('child_process').exec);
 
 const ffmpegParams = require('./ffmpeg-params')();
 
+function log(o) {
+	console.log(JSON.stringify(o, null, 2));
+	return o;
+}
+
 function ratio(w, h) {
 	let n = h;
 	while (n > 1) {
@@ -54,39 +59,34 @@ module.exports = function (outputPath) {
 		// 3. If WxH NOT found in param list, but AR is 16:9 or 4:3 -> use H to find the closest matching H param smaller than it, and use it
 		// 4. If WxH NOT found in param list, but AR is 9:16 or 3:4 -> use H to find the closest matching W param smaller than it, and use it
 		// 5. Else --------------------------------------------------> don't process, give warning
+
+		// List of operations
 		let list = [];
-		let w = metadata.width,
-			h = metadata.height,
+		let width = metadata.width,
+			height = metadata.height,
 			ar = metadata.ar;
-		if (`${w}x${h}` in ffmpegParams.knownAspectRatios) {
-			// console.log('prepareParameters 1');
-			let mainParameter = ffmpegParams.knownAspectRatios[`${w}x${h}`];
-			mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
-			metadata.list = list;
-			return metadata;
-		} else if (`${h}x${w}` in ffmpegParams.knownAspectRatios) {
-			// console.log('prepareParameters 2');
-			let mainParameter = ffmpegParams.knownAspectRatios[`${h}x${w}`];
-			let w = mainParameter.w;
-			let h = mainParameter.h;
-			mainParameter.w = h;
-			mainParameter.h = w;
-			mainParameter.lower_res.forEach(each => {
-				let w = each.w;
-				let h = each.h;
-				each.w = h;
-				each.h = w;
-				list.push(ffmpegParams.knownAspectRatios[each]);
+		if (`${width}x${height}` in ffmpegParams.knownAspectRatios) {
+			console.log('prepareParameters 1');
+			metadata.list = ffmpegParams.knownAspectRatios[`${width}x${height}`].lower_res.map(
+				each => ffmpegParams.knownAspectRatios[each]
+			);
+		} else if (`${height}x${width}` in ffmpegParams.knownAspectRatios) {
+			console.log('prepareParameters 2');
+			metadata.list = ffmpegParams.knownAspectRatios[`${height}x${width}`].lower_res.map(each => {
+				let parameter = ffmpegParams.knownAspectRatios[each];
+				let w = parameter.w;
+				let h = parameter.h;
+				parameter.w = h;
+				parameter.h = w;
+				return parameter;
 			});
-			metadata.list = list;
-			return metadata;
 		} else if (ar === '16:9' || ar === '4:3') {
-			// console.log('prepareParameters 3');
+			console.log('prepareParameters 3');
 			let resList = ffmpegParams.knownResolutions[ar];
 			let selectedRes = null;
 			for (let i = 0; i < resList.length; i++) {
 				let res = resList[i];
-				if (parseInt(res.split('x')[1]) > parseInt(h)) {
+				if (parseInt(res.split('x')[1]) > parseInt(height)) {
 					if (i - 1 >= 0) {
 						selectedRes = resList[i - 1];
 					}
@@ -101,17 +101,16 @@ module.exports = function (outputPath) {
 				let mainParameter = ffmpegParams.knownAspectRatios[selectedRes];
 				mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
 				metadata.list = list;
-				return metadata;
 			} else {
 				return Promise.reject(`Unable to handle this video - ${JSON.stringify(metadata)}`);
 			}
 		} else if (ar === '9:16' || ar === '3:4') {
-			// console.log('prepareParameters 4');
+			console.log('prepareParameters 4');
 			let resList = ffmpegParams.knownResolutions[ar.split(':').reverse().join(':')];
 			let selectedRes = null;
 			for (let i = 0; i < resList.length; i++) {
 				let res = resList[i];
-				if (parseInt(res.split('x')[0]) > parseInt(h)) {
+				if (parseInt(res.split('x')[0]) > parseInt(height)) {
 					if (i - 1 >= 0) {
 						selectedRes = resList[i - 1];
 					}
@@ -123,17 +122,22 @@ module.exports = function (outputPath) {
 				}
 			}
 			if (selectedRes) {
-				let mainParameter = ffmpegParams.knownAspectRatios[selectedRes];
-				mainParameter.lower_res.forEach(each => list.push(ffmpegParams.knownAspectRatios[each]));
-				metadata.list = list;
-				return metadata;
+				metadata.list = ffmpegParams.knownAspectRatios[selectedRes].lower_res.map(each => {
+					let parameter = ffmpegParams.knownAspectRatios[each];
+					let w = parameter.w;
+					let h = parameter.h;
+					parameter.w = h;
+					parameter.h = w;
+					return parameter;
+				});
 			} else {
 				return Promise.reject(`Unable to handle this video - ${JSON.stringify(metadata)}`);
 			}
 		} else {
-			// console.log('prepareParameters 5');
+			console.log('prepareParameters 5');
 			return Promise.reject(`Unable to handle this video - ${JSON.stringify(metadata)}`);
 		}
+		return metadata;
 	};
 
 	const buildCommand = (path, rotate, list) => {
@@ -171,10 +175,7 @@ module.exports = function (outputPath) {
 
 		// map each audio stream and process it
 		command += list
-			.map(
-				(e, i) =>
-					` -map a:0 -c:a:${i} aac -ar ${e.a_ar} -b:a:${i} ${e.a_b} -ac ${e.ac}`
-			)
+			.map((e, i) => ` -map a:0 -c:a:${i} aac -ar ${e.a_ar} -b:a:${i} ${e.a_b} -ac ${e.ac}`)
 			.join('');
 
 		// HLS settings and output
@@ -218,9 +219,13 @@ module.exports = function (outputPath) {
 
 	const processVideo = path => {
 		return ffprobe(path)
+			.then(log)
 			.then(output => extractSimplify(output))
+			.then(log)
 			.then(metadata => prepareParameters(metadata))
+			.then(log)
 			.then(({ rotate, list }) => buildCommand(path, rotate, list))
+			.then(log)
 			.then(command => ffmpeg(command, path));
 	};
 
